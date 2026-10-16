@@ -1,0 +1,221 @@
+// Skema data Buku Agenda.
+//
+// Prinsip: satu unit kerja (kelurahan atau kecamatan) adalah satuan data.
+// Setiap baris surat WAJIB punya unitId, dan setiap query di aplikasi wajib
+// dibatasi ke unit-unit dalam cakupan pengguna — itu batas multi-tenant-nya,
+// ditegakkan di lapisan query, bukan hanya dengan menyembunyikan tombol di UI.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LevelUnit {
+  KELURAHAN
+  KECAMATAN
+}
+
+enum Peran {
+  PETUGAS
+  KEPALA
+}
+
+enum JenisSuratMasuk {
+  UNDANGAN
+  KEPUTUSAN
+  PERMOHONAN
+  INFORMASI
+  TAGIHAN
+  SANKSI
+  LAINNYA
+}
+
+enum StatusSuratMasuk {
+  BARU
+  DISPOSISI
+  PROSES
+  SELESAI
+}
+
+enum JenisSuratKeluar {
+  EDARAN
+  REKOMENDASI
+  PERMOHONAN
+  BALASAN
+  UNDANGAN
+  LAINNYA
+}
+
+enum SifatSurat {
+  BIASA
+  PENTING
+  SANGAT_PENTING
+}
+
+enum StatusSuratKeluar {
+  DRAFT
+  DIKIRIM
+  DITERIMA
+}
+
+enum JenisSurat {
+  MASUK
+  KELUAR
+}
+
+enum TipeCounter {
+  URUT_MASUK
+  NOMOR_KELUAR
+}
+
+model Unit {
+  id        String     @id @default(cuid())
+  nama      String
+  kode      String // KL atau KC — dipakai pada nomor surat keluar
+  level     LevelUnit
+  indukId   String?
+  induk     Unit?      @relation("HierarkiUnit", fields: [indukId], references: [id])
+  anak      Unit[]     @relation("HierarkiUnit")
+  alamat    String?
+  telepon   String?
+  createdAt DateTime   @default(now())
+
+  pengguna    Pengguna[]
+  suratMasuk  SuratMasuk[]
+  suratKeluar SuratKeluar[]
+  counter     Counter[]
+
+  @@unique([kode, nama])
+  @@index([level])
+}
+
+model Pengguna {
+  id           String   @id @default(cuid())
+  nama         String
+  username     String   @unique
+  passwordHash String
+  peran        Peran    @default(PETUGAS)
+  aktif        Boolean  @default(true)
+  unitId       String
+  unit         Unit     @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  dibuatPada   DateTime @default(now())
+
+  sesi          Sesi[]
+  suratMasuk    SuratMasuk[]
+  suratKeluar   SuratKeluar[]
+  riwayatDibuat SuratRiwayat[]
+
+  @@index([unitId])
+}
+
+model Sesi {
+  id          String   @id @default(cuid())
+  tokenHash   String   @unique
+  penggunaId  String
+  pengguna    Pengguna @relation(fields: [penggunaId], references: [id], onDelete: Cascade)
+  kedaluwarsa DateTime
+  alamatIp    String?
+  userAgent   String?
+  dibuatPada  DateTime @default(now())
+
+  @@index([penggunaId])
+  @@index([kedaluwarsa])
+}
+
+/// Surat masuk: dicatat apa adanya dari pengirim. Nomor surat datang dari
+/// pihak pengirim, jadi TIDAK dibangkitkan — tetapi wajib unik per unit per
+/// tahun agar tidak ada nomor yang sama tercatat dua kali.
+model SuratMasuk {
+  id           String           @id @default(cuid())
+  nomorUrut    Int
+  nomorSurat   String
+  tahun        Int
+  tanggalSurat DateTime
+  tanggalMasuk DateTime
+  pengirim     String
+  penerima     String?
+  jenis        JenisSuratMasuk
+  perihal     String
+  status       StatusSuratMasuk @default(BARU)
+  disposisi    String?
+  diteruskanKe String?
+  catatan      String?
+  lampiran     String?
+  unitId       String
+  unit         Unit             @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  dibuatOlehId String
+  dibuatOleh   Pengguna         @relation(fields: [dibuatOlehId], references: [id], onDelete: Restrict)
+  dibuatPada   DateTime         @default(now())
+  diubahPada   DateTime         @updatedAt
+
+  @@unique([unitId, nomorSurat, tahun])
+  @@unique([unitId, tahun, nomorUrut])
+  @@index([unitId, tanggalMasuk(sort: Desc)])
+  @@index([unitId, status])
+  @@index([unitId, jenis])
+}
+
+/// Surat keluar: nomor surat dibangkitkan aplikasi sendiri agar tidak pernah
+/// bentrok dan tidak pernah salah ketik. Urutannya diambil dari tabel Counter
+/// dengan increment atomik di dalam satu transaksi.
+model SuratKeluar {
+  id            String            @id @default(cuid())
+  nomorUrut     Int
+  nomorSurat    String
+  tahun         Int
+  tanggalSurat  DateTime
+  tujuan        String
+  jenis         JenisSuratKeluar
+  sifat         SifatSurat        @default(BIASA)
+  perihal      String
+  status        StatusSuratKeluar @default(DRAFT)
+  penandatangan String?
+  catatan       String?
+  unitId        String
+  unit          Unit              @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  dibuatOlehId  String
+  dibuatOleh    Pengguna          @relation(fields: [dibuatOlehId], references: [id], onDelete: Restrict)
+  dibuatPada    DateTime          @default(now())
+  diubahPada    DateTime          @updatedAt
+
+  @@unique([unitId, nomorSurat])
+  @@unique([unitId, tahun, nomorUrut])
+  @@index([unitId, tanggalSurat(sort: Desc)])
+  @@index([unitId, status])
+  @@index([unitId, jenis])
+}
+
+/// Riwayat perubahan status. Setiap transisi status menulis satu baris di sini,
+/// sehingga panel "Riwayat" di halaman detail bukan hiasan — itu datanya.
+model SuratRiwayat {
+  id         String    @id @default(cuid())
+  suratJenis JenisSurat
+  suratId    String
+  dari       String?
+  ke         String
+  catatan    String?
+  olehId     String
+  oleh       Pengguna  @relation(fields: [olehId], references: [id], onDelete: Restrict)
+  dibuatPada DateTime  @default(now())
+
+  @@index([suratJenis, suratId])
+  @@index([dibuatPada(sort: Desc)])
+}
+
+/// Penomoran: satu baris per (unit, tahun, tipe). Increment dilakukan di dalam
+/// transaksi sehingga dua petugas yang klik "Simpan" bersamaan tetap mendapat
+/// nomor berbeda.
+model Counter {
+  id     String      @id @default(cuid())
+  unitId String
+  unit   Unit        @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  tahun  Int
+  tipe   TipeCounter
+  n      Int         @default(0)
+
+  @@unique([unitId, tahun, tipe])
+}

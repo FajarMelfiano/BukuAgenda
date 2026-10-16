@@ -1,0 +1,234 @@
+@import "tailwindcss";
+
+/*
+  "Kertas & Tinta" — sistem visual Buku Agenda.
+
+  Produk ini adalah buku agenda surat kertas yang hidup. Karena itu paletnya
+  bukan palet dasbor SaaS: dasarAbu-abu dingin seperti kertas HVS di bawah
+  lampu neon kantor, teks tinta hijau-hitam, dan satu aksen hijau tua
+  institusional. Krem-terracotta dan ungu-biru sengaja dihindari — keduanya
+  tanda paling kuat halaman generik.
+
+  Aturan bentuk yang dikunci (jangan dilanggar di komponen mana pun):
+    - Radius: kontrol 2px, panel 3px, sel tabel 0.
+    - Elevasi: satu tingkat saja — dialog. Selain itu hairline border.
+*/
+
+@theme {
+  /* Kertas & tinta */
+  --color-kertas: #f4f4f0;
+  --color-lembar: #ffffff;
+  --color-panel: #eaeae4;
+  --color-garis: #dadad1;
+  --color-garis-kuat: #c2c2b6;
+
+  --color-tinta: #1b201c;
+  --color-tinta-2: #565c54;
+  --color-tinta-3: #838a80;
+
+  /* Aksen institusional — dipakai di seluruh aplikasi, tanpa pengecualian. */
+  --color-hijau: #1b5e45;
+  --color-hijau-gelap: #11402f;
+  --color-hijau-terang: #e4efe9;
+
+  /* Warna stempel status (selalu berpasangan dengan teksnya) */
+  --color-stempel-amber: #8a5a00;
+  --color-stempel-amber-latar: #fbf0d6;
+  --color-stempel-biru: #1d4e77;
+  --color-stempel-biru-latar: #e5edf4;
+  --color-stempel-ungu: #6b4e9e;
+  --color-stempel-ungu-latar: #efe9f7;
+  --color-stempel-hijau: #1b5e45;
+  --color-stempel-hijau-latar: #e4efe9;
+  --color-stempel-merah: #8e2a1f;
+  --color-stempel-merah-latar: #f8e7e4;
+
+  --font-sans: var(--font-plus-jakarta), "Plus Jakarta Sans", ui-sans-serif,
+    system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace,
+    "SFMono-Regular", Menlo, monospace;
+
+  --radius-kontrol: 2px;
+  --radius-panel: 3px;
+
+  /* Satu bayangan saja, untuk dialog. */
+  --shadow-dialog: 0 1px 2px rgb(27 32 28 / 0.06), 0 12px 32px -8px rgb(27 32 28 / 0.22);
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-garis);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-kertas);
+    color: var(--color-tinta);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv05" 1;
+  }
+
+  /* Fokus keyboard: satu definisi untuk seluruh aplikasi. Never outline:none. */
+  :focus-visible {
+    outline: 2px solid var(--color-hijau);
+    outline-offset: 2px;
+    border-radius: 1px;
+  }
+
+  ::selection {
+    background-color: var(--color-hijau-terang);
+    color: var(--color-hijau-gelap);
+  }
+
+  /* Angka selalu sejajar di kolom — seperti di buku agenda kertas. */
+  th[data-mono],
+  td[data-mono],
+  .tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Aturan overflow tabel: nomor surat adalah string panjang, jangan pernah
+     memaksa kolom melebar. */
+  td,
+  th {
+    overflow-wrap: break-word;
+  }
+}
+
+@layer components {
+  /* Label meta: sentence case, huruf kecil, tanpa tracking lebar.
+     Ini bukan "eyebrow" — hanya label data, dan tidak pernah muncul di atas
+     heading. */
+  .meta {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--color-tinta-3);
+  }
+
+  /* Tanda tangan elemen produk: nomor surat dalam kotak docket, seperti
+     nomor agenda yang dicetak di kertas. */
+  .docket {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border: 1px solid var(--color-garis-kuat);
+    border-radius: var(--radius-kontrol);
+    background-color: var(--color-lembar);
+    padding: 0.125rem 0.375rem;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-tinta);
+    white-space: nowrap;
+  }
+
+  .docket-lg {
+    font-size: 15px;
+    padding: 0.25rem 0.5rem;
+  }
+}
+
+@layer utilities {
+  .halaman {
+    /* Bilah gulir tipis dan netral — tidak menarik perhatian di layar 1366px. */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-garis-kuat) transparent;
+  }
+
+  .halaman::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .halaman::-webkit-scrollbar-thumb {
+    background-color: var(--color-garis-kuat);
+    border: 3px solid var(--color-kertas);
+    border-radius: 99px;
+  }
+
+  .halaman::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+}
+
+/* Gerbang halaman cetak: yang dicetak adalah lembar agenda, bukan aplikasi.
+   Sidebar, toolbar, tombol, dan paginasi hilang; kepala tabel berulang di
+   setiap halaman; nomor halaman dicetak otomatis oleh peramban. */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 16mm 14mm;
+  }
+
+  html,
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-size: 10.5pt;
+  }
+
+  [data-cetak="sembunyi"] {
+    display: none !important;
+  }
+
+  [data-cetak="halaman"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    overflow: visible !important;
+  }
+
+  /* thead diulang otomatis di setiap halaman A4. */
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  tr,
+  td {
+    page-break-inside: avoid;
+  }
+
+  a[href]::after {
+    content: "";
+  }
+}
+
+/* Hormati preferensi pengguna: tanpa transisi, tanpa gerak. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
