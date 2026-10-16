@@ -151,7 +151,7 @@ export default async function HalamanRekap({
     prisma.suratMasuk.count({
       where: {
         unitId: { in: f.unit && ctx.cakupanUnitIds.includes(f.unit) ? [f.unit] : ctx.cakupanUnitIds },
-        status: { not: "SELESAI" },
+        status: { notIn: ["SELESAI", "DITOLAK"] },
         tanggalMasuk: { lt: new Date(Date.now() - SLA_HARI * 86_400_000) },
       },
     }),

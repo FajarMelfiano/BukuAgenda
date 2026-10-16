@@ -53,8 +53,8 @@ export const KELUAR_NILAI = [
   "LAINNYA",
 ] as const;
 export const SIFAT_NILAI = ["BIASA", "PENTING", "SANGAT_PENTING"] as const;
-export const STATUS_MASUK_NILAI = ["BARU", "DISPOSISI", "PROSES", "SELESAI"] as const;
-export const STATUS_KELUAR_NILAI = ["DRAFT", "DIKIRIM", "DITERIMA"] as const;
+export const STATUS_MASUK_NILAI = ["BARU", "DISPOSISI", "PROSES", "SELESAI", "DITOLAK"] as const;
+export const STATUS_KELUAR_NILAI = ["DRAFT", "DIKIRIM", "DITERIMA", "DITOLAK"] as const;
 
 const opsional = (maks: number, label: string) =>
   z

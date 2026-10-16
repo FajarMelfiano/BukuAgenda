@@ -242,6 +242,7 @@ export async function ubahStatusMasuk(
         status: data.status,
         disposisi: data.disposisi ?? surat.disposisi,
         diteruskanKe: data.diteruskanKe ?? surat.diteruskanKe,
+        catatan: data.catatan ?? surat.catatan,
       },
     });
     await tx.suratRiwayat.create({

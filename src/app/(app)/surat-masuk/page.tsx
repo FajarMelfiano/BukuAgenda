@@ -86,7 +86,7 @@ export default async function HalamanSuratMasuk({
   const terlambatCount = await prisma.suratMasuk.count({
     where: {
       ...where,
-      status: { not: "SELESAI" },
+      status: { notIn: ["SELESAI", "DITOLAK"] },
       tanggalMasuk: { lt: new Date(Date.now() - SLA_HARI * 86_400_000) },
     },
   });

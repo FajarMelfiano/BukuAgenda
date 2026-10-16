@@ -12,12 +12,14 @@ const WARNA_MASUK: Record<string, WarnaMasuk> = {
   DISPOSISI: "biru",
   PROSES: "ungu",
   SELESAI: "hijau",
+  DITOLAK: "merah",
 };
 
 const WARNA_KELUAR: Record<string, WarnaKeluar> = {
   DRAFT: "netral",
   DIKIRIM: "biru",
   DITERIMA: "hijau",
+  DITOLAK: "merah",
 };
 
 /** Lencana status surat masuk, lengkap dengan deskripsinya sebagai tooltip. */
@@ -29,7 +31,7 @@ export function StatusMasuk({
   terlambat?: boolean;
 }) {
   const meta = STATUS_MASUK.find((s) => s.nilai === status);
-  if (terlambat) {
+  if (terlambat && status !== "DITOLAK") {
     return <Lencana warna="merah" judul="Lewat batas 7 hari sejak masuk dan belum selesai">Terlambat</Lencana>;
   }
   return (

@@ -12,6 +12,7 @@ import {
   LoaderCircle,
   Play,
   UserCheck,
+  XCircle,
 } from "lucide-react";
 import type { StatusMasuk } from "@/lib/domain";
 import type { StateForm } from "@/app/actions/surat";
@@ -46,9 +47,17 @@ const TEMPLATE_DISPOSISI = [
   "Selesaikan dan laporkan sebelum batas waktu.",
 ];
 
+const TEMPLATE_TOLAK = [
+  "Berkas permohonan tidak lengkap atau tidak memenuhi persyaratan.",
+  "Bukan merupakan kewenangan atau tugas pokok unit kerja kami.",
+  "Alamat atau tujuan surat salah / tidak sesuai.",
+  "Permohonan tidak dapat disetujui setelah dilakukan penelaahan.",
+  "Melewati batas waktu yang telah ditentukan.",
+];
+
 /**
  * Visual Alur / Stepper Surat Masuk:
- * 1. Baru -> 2. Disposisi -> 3. Diproses -> 4. Selesai
+ * 1. Baru -> 2. Disposisi -> 3. Diproses -> 4. Selesai (atau Ditolak)
  */
 export function AlurStepperMasuk({
   status,
@@ -57,6 +66,24 @@ export function AlurStepperMasuk({
   status: StatusMasuk;
   diteruskanKe?: string | null;
 }) {
+  if (status === "DITOLAK") {
+    return (
+      <div className="mb-4 rounded-panel border border-stempel-merah/40 bg-stempel-merah-latar/40 p-3.5">
+        <div className="flex items-center gap-2.5 text-stempel-merah">
+          <XCircle aria-hidden className="size-5 shrink-0" />
+          <div className="min-w-0">
+            <h3 className="text-[13px] font-semibold text-stempel-merah">
+              Status Berkas: Ditolak
+            </h3>
+            <p className="mt-0.5 text-[11.5px] leading-tight text-stempel-merah/90">
+              Surat ini telah ditolak. Rangkaian penanganan dan disposisi telah dihentikan.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const tahapan = [
     {
       kunci: "BARU",
@@ -93,6 +120,7 @@ export function AlurStepperMasuk({
     DISPOSISI: 2,
     PROSES: 3,
     SELESAI: 4,
+    DITOLAK: 0,
   };
 
   const indeksSekarang = urutanStatus[status];
@@ -160,6 +188,7 @@ export function AlurStepperMasuk({
 /**
  * Panel Tindak Lanjut Aktif Surat Masuk:
  * Mengarahkan petugas dari status BARU -> DISPOSISI -> PROSES -> SELESAI
+ * Serta menyediakan opsi penolakan surat (DITOLAK)
  */
 export function PanelTindakLanjutMasuk({
   surat,
@@ -171,18 +200,111 @@ export function PanelTindakLanjutMasuk({
   namaPenggunaAktif: string;
 }) {
   const [modalBuka, setModalBuka] = useState(false);
+  const [modalTolakBuka, setModalTolakBuka] = useState(false);
   const [diteruskanKeInput, setDiteruskanKeInput] = useState(surat.diteruskanKe ?? "");
   const [disposisiInput, setDisposisiInput] = useState(surat.disposisi ?? "");
+  const [alasanTolakInput, setAlasanTolakInput] = useState("");
 
   const aksiBound = ubahStatusMasuk.bind(null, surat.id);
   const [state, formAction] = useActionState(aksiBound, {});
+  const [stateTolak, formActionTolak] = useActionState(aksiBound, {});
+
   const idForm = useRef(`form-tindak-${Math.random().toString(36).slice(2, 9)}`).current;
+  const idFormTolak = useRef(`form-tolak-${Math.random().toString(36).slice(2, 9)}`).current;
 
   useEffect(() => {
-    if (state.nilai?.info) {
-      setModalBuka(false);
-    }
+    if (state.nilai?.info) setModalBuka(false);
   }, [state]);
+
+  useEffect(() => {
+    if (stateTolak.nilai?.info) setModalTolakBuka(false);
+  }, [stateTolak]);
+
+  // Dialog Tolak Surat (Rejection Dialog)
+  const dialogTolak = (
+    <Dialog
+      buka={modalTolakBuka}
+      onTutup={() => setModalTolakBuka(false)}
+      judul="Tolak Surat Masuk"
+      deskripsi={`Surat nomor ${surat.nomorSurat} akan ditolak dan proses tindak lanjut dihentikan.`}
+      aksi={
+        <>
+          <Tombol variant="kedua" ukuran="md" onClick={() => setModalTolakBuka(false)}>
+            Batal
+          </Tombol>
+          <Tombol
+            type="submit"
+            form={idFormTolak}
+            variant="bahaya"
+            ukuran="md"
+          >
+            Konfirmasi Tolak Surat
+          </Tombol>
+        </>
+      }
+    >
+      <form id={idFormTolak} action={formActionTolak} noValidate className="space-y-4">
+        {stateTolak.galat ? <GalatBaris>{stateTolak.galat}</GalatBaris> : null}
+        <input type="hidden" name="status" value="DITOLAK" />
+
+        <Bidang
+          label="Alasan Penolakan (Wajib)"
+          bantuan="Jelaskan alasan mengapa surat ini ditolak agar tersimpan pada catatan riwayat berkas."
+        >
+          {(p) => (
+            <div className="space-y-2">
+              <Textarea
+                {...p}
+                name="catatan"
+                value={alasanTolakInput}
+                onChange={(e) => setAlasanTolakInput(e.target.value)}
+                placeholder="mis. Berkas permohonan tidak lengkap atau salah tujuan alamat unit kerja."
+                maxLength={500}
+                rows={3}
+                required
+              />
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[11px] text-tinta-3">Pilihan cepat:</span>
+                {TEMPLATE_TOLAK.map((tmpl) => (
+                  <button
+                    key={tmpl}
+                    type="button"
+                    onClick={() => setAlasanTolakInput(tmpl)}
+                    className="rounded-full border border-garis bg-lembar px-2 py-0.5 text-[11px] text-tinta-2 hover:border-stempel-merah hover:text-stempel-merah"
+                  >
+                    + {tmpl}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </Bidang>
+      </form>
+    </Dialog>
+  );
+
+  // Status DITOLAK
+  if (surat.status === "DITOLAK") {
+    return (
+      <div className="rounded-panel border border-stempel-merah/40 bg-stempel-merah-latar/40 p-4">
+        <div className="flex items-start gap-2.5">
+          <XCircle aria-hidden className="mt-0.5 size-5 shrink-0 text-stempel-merah" />
+          <div className="min-w-0 flex-1">
+            <h4 className="text-[13px] font-semibold text-tinta">Berkas Surat Ditolak</h4>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-tinta-2">
+              Surat ini telah ditolak oleh petugas/pimpinan dan proses administrasi telah dihentikan.
+            </p>
+            {surat.catatan ? (
+              <div className="mt-2.5 rounded-kontrol border border-stempel-merah/25 bg-lembar p-2.5 text-[12px]">
+                <span className="font-semibold text-stempel-merah">Alasan Penolakan:</span>
+                <p className="mt-0.5 text-tinta italic">“{surat.catatan}”</p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Status SELESAI
   if (surat.status === "SELESAI") {
@@ -211,7 +333,7 @@ export function PanelTindakLanjutMasuk({
     );
   }
 
-  // Status BARU -> Target berikutnya: DISPOSISI
+  // Status BARU -> Target berikutnya: DISPOSISI atau DITOLAK
   if (surat.status === "BARU") {
     return (
       <div className="space-y-3">
@@ -225,15 +347,24 @@ export function PanelTindakLanjutMasuk({
                 Surat Masuk Baru Dicatat
               </h4>
               <p className="mt-0.5 text-[12px] leading-relaxed text-tinta-2">
-                Surat belum diberi disposisi. Tentukan petugas yang menangani beserta instruksi tindak lanjut pimpinan.
+                Surat belum diberi disposisi. Tentukan petugas pelaksana atau tolak berkas jika tidak memenuhi syarat.
               </p>
             </div>
           </div>
 
-          <div className="mt-3">
-            <Tombol variant="utama" ukuran="md" onClick={() => setModalBuka(true)} className="w-full sm:w-auto">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Tombol variant="utama" ukuran="md" onClick={() => setModalBuka(true)}>
               <Forward aria-hidden className="size-3.5" />
               Beri Disposisi & Teruskan
+            </Tombol>
+            <Tombol
+              variant="kedua"
+              ukuran="md"
+              onClick={() => setModalTolakBuka(true)}
+              className="text-stempel-merah hover:border-stempel-merah hover:bg-stempel-merah-latar"
+            >
+              <XCircle aria-hidden className="size-3.5" />
+              Tolak Surat
             </Tombol>
           </div>
         </div>
@@ -337,11 +468,13 @@ export function PanelTindakLanjutMasuk({
             </Bidang>
           </form>
         </Dialog>
+
+        {dialogTolak}
       </div>
     );
   }
 
-  // Status DISPOSISI -> Target berikutnya: PROSES
+  // Status DISPOSISI -> Target berikutnya: PROSES atau DITOLAK
   if (surat.status === "DISPOSISI") {
     return (
       <div className="space-y-3">
@@ -367,13 +500,22 @@ export function PanelTindakLanjutMasuk({
           </div>
 
           <p className="text-[12px] leading-relaxed text-tinta-2">
-            Petugas yang ditugaskan dapat langsung memulai penanganan atau tindak lanjut berkas ini.
+            Petugas yang ditugaskan dapat langsung memulai penanganan atau menolak berkas jika bukan tupoksinya.
           </p>
 
-          <div className="mt-3">
-            <Tombol variant="utama" ukuran="md" onClick={() => setModalBuka(true)} className="w-full sm:w-auto">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Tombol variant="utama" ukuran="md" onClick={() => setModalBuka(true)}>
               <Play aria-hidden className="size-3.5" />
               Mulai Proses Surat
+            </Tombol>
+            <Tombol
+              variant="kedua"
+              ukuran="md"
+              onClick={() => setModalTolakBuka(true)}
+              className="text-stempel-merah hover:border-stempel-merah hover:bg-stempel-merah-latar"
+            >
+              <XCircle aria-hidden className="size-3.5" />
+              Tolak Surat
             </Tombol>
           </div>
         </div>
@@ -422,11 +564,13 @@ export function PanelTindakLanjutMasuk({
             </Bidang>
           </form>
         </Dialog>
+
+        {dialogTolak}
       </div>
     );
   }
 
-  // Status PROSES -> Target berikutnya: SELESAI
+  // Status PROSES -> Target berikutnya: SELESAI atau DITOLAK
   if (surat.status === "PROSES") {
     return (
       <div className="space-y-3">
@@ -452,13 +596,22 @@ export function PanelTindakLanjutMasuk({
           </div>
 
           <p className="text-[12px] leading-relaxed text-tinta-2">
-            Jika proses pengerjaan atau tindak lanjut telah rampung, tandai surat sebagai selesai agar siap diarsipkan.
+            Jika proses pengerjaan tuntas, tandai selesai. Jika hasil telaah tidak dapat disetujui, tolak surat.
           </p>
 
-          <div className="mt-3">
-            <Tombol variant="utama" ukuran="md" onClick={() => setModalBuka(true)} className="w-full sm:w-auto">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Tombol variant="utama" ukuran="md" onClick={() => setModalBuka(true)}>
               <CheckCircle2 aria-hidden className="size-3.5" />
               Tandai Selesai & Arsipkan
+            </Tombol>
+            <Tombol
+              variant="kedua"
+              ukuran="md"
+              onClick={() => setModalTolakBuka(true)}
+              className="text-stempel-merah hover:border-stempel-merah hover:bg-stempel-merah-latar"
+            >
+              <XCircle aria-hidden className="size-3.5" />
+              Tolak Surat
             </Tombol>
           </div>
         </div>
@@ -497,6 +650,8 @@ export function PanelTindakLanjutMasuk({
             </Bidang>
           </form>
         </Dialog>
+
+        {dialogTolak}
       </div>
     );
   }

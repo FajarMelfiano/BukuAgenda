@@ -39,6 +39,7 @@ enum StatusSuratMasuk {
   DISPOSISI
   PROSES
   SELESAI
+  DITOLAK
 }
 
 enum JenisSuratKeluar {
@@ -60,6 +61,7 @@ enum StatusSuratKeluar {
   DRAFT
   DIKIRIM
   DITERIMA
+  DITOLAK
 }
 
 enum JenisSurat {

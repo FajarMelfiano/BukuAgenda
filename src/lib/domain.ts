@@ -44,6 +44,13 @@ export const STATUS_MASUK = [
     warna: "hijau",
     deskripsi: "Tindak lanjut tuntas, berkas bisa diarsipkan.",
   },
+  {
+    nilai: "DITOLAK",
+    label: "Ditolak",
+    ringkas: "Ditolak",
+    warna: "merah",
+    deskripsi: "Surat ditolak atau tidak dapat diproses lebih lanjut.",
+  },
 ] as const;
 
 export const STATUS_KELUAR = [
@@ -67,6 +74,13 @@ export const STATUS_KELUAR = [
     ringkas: "Diterima",
     warna: "hijau",
     deskripsi: "Tujuan sudah menerima dan hasilnya dicatat di buku agenda.",
+  },
+  {
+    nilai: "DITOLAK",
+    label: "Ditolak",
+    ringkas: "Ditolak",
+    warna: "merah",
+    deskripsi: "Draft surat keluar ditolak atau tidak disetujui.",
   },
 ] as const;
 
@@ -114,18 +128,20 @@ export const SIFAT_LABEL: Record<string, string> = Object.fromEntries(
   SIFAT_SURAT.map((s) => [s.nilai, s.label]),
 );
 
-/** Transisi status yang diperbolehkan. Mundur sengaja tidak dibuka. */
+/** Transisi status yang diperbolehkan. */
 export const TRANSISI_MASUK: Record<StatusMasuk, StatusMasuk[]> = {
-  BARU: ["DISPOSISI"],
-  DISPOSISI: ["PROSES"],
-  PROSES: ["SELESAI"],
+  BARU: ["DISPOSISI", "DITOLAK"],
+  DISPOSISI: ["PROSES", "DITOLAK"],
+  PROSES: ["SELESAI", "DITOLAK"],
   SELESAI: [],
+  DITOLAK: [],
 };
 
 export const TRANSISI_KELUAR: Record<StatusKeluar, StatusKeluar[]> = {
-  DRAFT: ["DIKIRIM"],
+  DRAFT: ["DIKIRIM", "DITOLAK"],
   DIKIRIM: ["DITERIMA"],
   DITERIMA: [],
+  DITOLAK: [],
 };
 
 /** Umur surat (hari) sebelum ditandai "terlambat" — SLA administrasi desa. */

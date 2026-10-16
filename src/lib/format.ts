@@ -86,7 +86,7 @@ export function sudahTerlambat(
   status: string,
   dari: Date = new Date(),
 ): boolean {
-  if (status === "SELESAI") return false;
+  if (status === "SELESAI" || status === "DITOLAK") return false;
   return hariSejak(tanggalMasuk, dari) > SLA_HARI;
 }
 
